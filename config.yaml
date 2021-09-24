@@ -1,0 +1,48 @@
+#cloud-config
+
+hostname: dwclass-milad
+
+rancher:
+  ssh:
+    port: 2222
+  resize_device: /dev/sda
+  network:
+    interfaces:
+      dns:
+        nameservers:
+          - 8.8.8.8
+          - 4.2.2.4
+      eth0:
+        address: 192.168.100.118/24
+        gateway: 192.168.100.50
+        dhcp: false
+  disable:
+    - password
+    - autologin
+    - debug
+        
+  - path: /var/lib/rancher/conf/node-exporter.yaml
+    content: | 
+      node-exporter:
+        image: prom/node-exporter
+        restart: unless-stopped
+        labels: 
+          - io.rancher.os.scope=system
+          - io.rancher.os.after=network
+          - io.rancher.os.detach=true
+
+  - path: /etc/rc.local
+    permissions: "0755"
+    owner: root
+    content: |
+      #!/bin/bash
+      wait-for-docker
+      ros service enable /var/lib/rancher/conf/node-exporter.yaml
+      ros service create node-explorer
+      ros service up node-explorer
+      ros service enable volume-nfs
+      mkdir /opt/nfs/nfs-local
+mounts:
+- ["192.168.100.206:/mnt/nfsdir", "/opt/nfs/nfs-local", "nfs4", "nolock,proto=tcp,addr=192.168.100.206"]
+ssh_authorized_keys:
+  -  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILBwkvR+c/+vUD+I4X/Pjpda1CdZ+pT/k5/qLQvpE3k+ mi.alkhamis@pm.me
